@@ -1,0 +1,25 @@
+---
+title: "Dissertation Project Analysis"
+author: "Joshua Travis Hiepler"
+date: "11/01/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+source <- read_csv("results.csv")
+source_long <- pivot_longer(source, "NV+V-NV":"V-V", names_to = "condition", values_to = "accuracy")
+```
+```{r}
+ggplot(source_long, aes(x = condition, y = accuracy)) + geom_boxplot()
+```
+
+
