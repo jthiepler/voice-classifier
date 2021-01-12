@@ -18,8 +18,56 @@ library(tidyverse)
 source <- read_csv("results.csv")
 source_long <- pivot_longer(source, "NV+V-NV":"V-V", names_to = "condition", values_to = "accuracy")
 ```
+
 ```{r}
-ggplot(source_long, aes(x = condition, y = accuracy)) + geom_boxplot()
+#Descriptives of all conditions
+summary(source)
 ```
+
+```{r}
+#Boxplots of all conditions
+ggplot(source_long, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot() + scale_fill_manual(values=c("#2F2FFF", "#3B9D3B", "#FFB631", "#FF1E1E", "#9C399C"))
+```
+
+```{r}
+#NV-NV and V-V
+
+#Create new df with only NV-NV and V-V data
+H1_df <- filter(source_long, condition %in% c("NV-NV", "V-V"))
+
+#Boxplot of NV-V and V-V
+ggplot(H1_df, aes(x = condition, y = accuracy)) + geom_boxplot() 
+
+#Perform paired t-test
+t.test(accuracy ~ condition, data = H1_df, paired = FALSE)
+```
+
+```{r}
+#NV-V and V-V
+
+#Create new df with only NV-V and V-V data
+H2_df <- filter(source_long, condition %in% c("NV-V", "V-V"))
+
+#Boxplot of NV-V and V-V
+ggplot(H2_df, aes(x = condition, y = accuracy)) + geom_boxplot() 
+
+#Perform paired t-test
+t.test(accuracy ~ condition, data = H2_df, paired = FALSE)
+```
+
+```{r}
+#NV-V and V-NV
+
+#Create new df with only NV-NV and V-V data
+H3_df <- filter(source_long, condition %in% c("NV-V", "V-NV"))
+
+#Boxplot of NV-V and V-V
+ggplot(H3_df, aes(x = condition, y = accuracy)) + geom_boxplot() 
+
+#Perform paired t-test
+t.test(accuracy ~ condition, data = H3_df, paired = FALSE)
+```
+
+
 
 
