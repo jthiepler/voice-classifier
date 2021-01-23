@@ -6,18 +6,32 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 ```
 
 ```{r}
 library(tidyverse)
 ```
+# Quick introduction
 
+This specific dataset was produced by training and testing an artifical neural network 500 times in total, giving us 100 trials per condition. As each of these models is essentially a "unique" individual that is subject to randomness, we essentially have an experiment with 500 participants split into 5 groups, where each individual is a single datapoint. There are a total of 400 samples from 10 speakers, 200 non-variable and 200 variable ones. The collected data represents the accuracy of the respective model when tested on the specified data, e.g. NV-NV is a model trained on non-variable data and then tested on non-variable data. In this case, models were trained on 10 sentences (ca. 30sec) and tested on 10 sentences (ca. 30sec) chosen randomly for each trial. The set creation algorithm ensures that training and test sets never have any overlap, as this would obscure results. In the case of NV+V-NV, the training set consisted of an equal split of variable and non-variable data. 
 
 ```{r}
 source <- read_csv("results.csv")
-source_long <- pivot_longer(source, "NV+V-NV":"V-V", names_to = "condition", values_to = "accuracy")
+source_long <- pivot_longer(source, "NV-NV":"NV+V-V", names_to = "condition", values_to = "accuracy")
+head(source_long, 10)
 ```
+# Stats summary & boxplots
+
+The output and graph below show several statistical properties of the data in each condition. A quick look at the boxplot shows three important things:
+
+1. Recognition accuracy reaches on average around 90%, showing that the algorithm is definitely proficient at identifying individuals based on given voice data.
+
+2. The NV-NV condition has a roughly 5% higher mean accuracy than the V-V accuracy, implying that variable speech makes recognition slightly more difficult, just as implied by Nadine's research.
+
+3. Recognition performance in the NV-V condition is significantly lower than in the V-V condition. This shows that a) variable speech definitely contains unique information that helps identifying a specific speaker and b) that even though recognition performance in the NV-V condition is only around 45% on average, this is still singifcantly above chance given we have 10 speakers, meaning that variable speech still maintains some of the features already present in non-variable speech.
+
+However, it also has to be mentioned that the algorithm perform poorly in the V-NV condition, and does not seem to be capable to build an average from the variable samples to achieve high accuracy when it comes to non-variable samples. This highlights that this algorithm lacks some of the sophistication of the human speaker recognition system, as a human would most likely be able to perform much better, abstracting variable samples to non-variable ones.
 
 ```{r}
 #Descriptives of all conditions
@@ -26,8 +40,12 @@ summary(source)
 
 ```{r}
 #Boxplots of all conditions
-ggplot(source_long, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot() + scale_fill_manual(values=c("#2F2FFF", "#3B9D3B", "#FFB631", "#FF1E1E", "#9C399C"))
+ggplot(source_long, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot() + scale_fill_manual(values=c("#FFC04F", "#3F3FFF", "#118811", "#FF6868", "#962D96", "#82C1FF"))
 ```
+
+# Hypothesis 1: Variable speech recognition is generally lower than non-variable speech recognition.
+
+While the difference in this instance is not very large (around 5%), the t-test below shows that it is significantly statistically significant, which is in line with results from human research. 
 
 ```{r}
 #NV-NV and V-V
@@ -36,11 +54,14 @@ ggplot(source_long, aes(x = condition, y = accuracy, fill = condition)) + geom_b
 H1_df <- filter(source_long, condition %in% c("NV-NV", "V-V"))
 
 #Boxplot of NV-V and V-V
-ggplot(H1_df, aes(x = condition, y = accuracy)) + geom_boxplot() 
+ggplot(H1_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("#FFC04F","#82C1FF"))
 
 #Perform paired t-test
 t.test(accuracy ~ condition, data = H1_df, paired = FALSE)
 ```
+# Hypothesis 2: A model trained on variable speech will perform singifcantly better when tested on variable speech than a model trained on non-variable speech.
+
+The difference in this instance is very large and obviously statistically significant. Since the algorithm essentially just works purely with the information provided to it, there should be no performance difference in case variable speech would just be non-variable speech with random noise added. While the difference might not be nearly as large in experiments with human participants, it still supports the notion that variable speech contains information that helps identifying a specific person and that within-person variability is unique to an individual. 
 
 ```{r}
 #NV-V and V-V
@@ -49,23 +70,9 @@ t.test(accuracy ~ condition, data = H1_df, paired = FALSE)
 H2_df <- filter(source_long, condition %in% c("NV-V", "V-V"))
 
 #Boxplot of NV-V and V-V
-ggplot(H2_df, aes(x = condition, y = accuracy)) + geom_boxplot() 
-
+ggplot(H1_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("#3F3FFF","#82C1FF"))
 #Perform paired t-test
 t.test(accuracy ~ condition, data = H2_df, paired = FALSE)
-```
-
-```{r}
-#NV-V and V-NV
-
-#Create new df with only NV-NV and V-V data
-H3_df <- filter(source_long, condition %in% c("NV-V", "V-NV"))
-
-#Boxplot of NV-V and V-V
-ggplot(H3_df, aes(x = condition, y = accuracy)) + geom_boxplot() 
-
-#Perform paired t-test
-t.test(accuracy ~ condition, data = H3_df, paired = FALSE)
 ```
 
 
