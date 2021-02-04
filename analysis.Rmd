@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 
 ```{r}
 library(tidyverse)
+library(pwr)
 ```
 # Quick introduction
 
@@ -36,11 +37,10 @@ However, it also has to be mentioned that the algorithm perform poorly in the V-
 ```{r}
 #Descriptives of all conditions
 summary(source)
-```
 
-```{r}
-#Boxplots of all conditions
-ggplot(source_long, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot() + scale_fill_manual(values=c("#FFC04F", "#3F3FFF", "#118811", "#FF6868", "#962D96", "#82C1FF"))
+#Power Analysis
+pwr.t.test(d = 0.2, sig.level = .05, power = 0.8, type = "two.sample")
+pwr.t.test(d = 0.2, sig.level = .05, n = 500, type = "two.sample")
 ```
 
 # Hypothesis 1: Variable speech recognition is generally lower than non-variable speech recognition.
