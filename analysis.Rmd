@@ -19,7 +19,7 @@ This specific dataset was produced by training and testing an artifical neural n
 
 ```{r}
 source <- read_csv("results.csv")
-source_long <- pivot_longer(source, "NV-NV":"NV+V-V", names_to = "condition", values_to = "accuracy")
+source_long <- pivot_longer(source, "NV-NV":"V-NV+V", names_to = "condition", values_to = "accuracy")
 head(source_long, 10)
 ```
 # Stats summary & boxplots
@@ -71,7 +71,7 @@ The difference in this instance is very large and obviously statistically signif
 H2_df <- filter(source_long, condition %in% c("NV-V", "V-V"))
 
 #Boxplot of NV-V and V-V
-ggplot(H1_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("#3F3FFF","#82C1FF"))
+ggplot(H2_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("#3F3FFF","#82C1FF"))
 #Perform paired t-test
 t.test(accuracy ~ condition, data = H2_df, paired = FALSE)
 ```
