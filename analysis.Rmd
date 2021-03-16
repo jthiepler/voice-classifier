@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 ```{r}
 library(tidyverse)
 library(pwr)
+library(esc)
 ```
 # Quick introduction
 
@@ -36,12 +37,14 @@ However, it also has to be mentioned that the algorithm perform poorly in the V-
 
 ```{r}
 #Descriptives of all conditions
-summary(source)
+descriptives <- group_by(source_long, condition) %>%
+  summarise(mean = mean(accuracy), sd = sd(accuracy))
+
 ggplot(source_long, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5)
 
 #Power Analysis
-pwr.t.test(d = 0.2, sig.level = .05, power = 0.8, type = "two.sample")
-pwr.t.test(d = 0.2, sig.level = .05, n = 500, type = "two.sample")
+pwr.t.test(d = 0.2, sig.level = .05, power = 0.8, type = "two.sample", alternative = "greater")
+pwr.t.test(d = 0.2, sig.level = .05, n = 500, type = "two.sample", alternative = "greater")
 ```
 
 # Hypothesis 1: Variable speech recognition is generally lower than non-variable speech recognition.
@@ -57,8 +60,10 @@ H1_df <- filter(source_long, condition %in% c("NV-NV", "V-V"))
 #Boxplot of NV-V and V-V
 ggplot(H1_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("#FFC04F","#82C1FF"))
 
-#Perform paired t-test
-t.test(accuracy ~ condition, data = H1_df, paired = FALSE)
+#Perform independent t-test
+t.test(accuracy ~ condition, data = H1_df, alternative = "greater", paired = FALSE)
+#Calculate effect size
+esc_t(t = 12.743, grp1n = 500, grp2n = 500, es.type="g")
 ```
 # Hypothesis 2: A model trained on variable speech will perform singifcantly better when tested on variable speech than a model trained on non-variable speech.
 
@@ -73,7 +78,9 @@ H2_df <- filter(source_long, condition %in% c("NV-V", "V-V"))
 #Boxplot of NV-V and V-V
 ggplot(H2_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("#3F3FFF","#82C1FF"))
 #Perform paired t-test
-t.test(accuracy ~ condition, data = H2_df, paired = FALSE)
+t.test(accuracy ~ condition, data = H2_df, alternative = "less", paired = FALSE)
+#Calculate effect size
+esc_t(t = -123.13, grp1n = 500, grp2n = 500, es.type="g")
 ```
 
 
