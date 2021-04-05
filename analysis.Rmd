@@ -13,44 +13,28 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 library(tidyverse)
 library(pwr)
 library(esc)
+library(jtools)
 ```
-# Quick introduction
-
-This specific dataset was produced by training and testing an artifical neural network 500 times in total, giving us 100 trials per condition. As each of these models is essentially a "unique" individual that is subject to randomness, we essentially have an experiment with 500 participants split into 5 groups, where each individual is a single datapoint. There are a total of 400 samples from 10 speakers, 200 non-variable and 200 variable ones. The collected data represents the accuracy of the respective model when tested on the specified data, e.g. NV-NV is a model trained on non-variable data and then tested on non-variable data. In this case, models were trained on 10 sentences (ca. 30sec) and tested on 10 sentences (ca. 30sec) chosen randomly for each trial. The set creation algorithm ensures that training and test sets never have any overlap, as this would obscure results. In the case of NV+V-NV, the training set consisted of an equal split of variable and non-variable data. 
 
 ```{r}
-source <- read_csv("results.csv")
+source <- read_csv("results_final.csv")
 source_long <- pivot_longer(source, "NV-NV":"V-NV+V", names_to = "condition", values_to = "accuracy")
+source_long$condition <- factor(source_long$condition,levels = c("NV-NV", "V-V", "NV-V", "V-NV", "NV-NV+V", "V-NV+V", "NV+V-NV", "NV+V-V"))
 head(source_long, 10)
 ```
-# Stats summary & boxplots
-
-The output and graph below show several statistical properties of the data in each condition. A quick look at the boxplot shows three important things:
-
-1. Recognition accuracy reaches on average around 90%, showing that the algorithm is definitely proficient at identifying individuals based on given voice data.
-
-2. The NV-NV condition has a roughly 5% higher mean accuracy than the V-V accuracy, implying that variable speech makes recognition slightly more difficult, just as implied by Nadine's research.
-
-3. Recognition performance in the NV-V condition is significantly lower than in the V-V condition. This shows that a) variable speech definitely contains unique information that helps identifying a specific speaker and b) that even though recognition performance in the NV-V condition is only around 45% on average, this is still singifcantly above chance given we have 10 speakers, meaning that variable speech still maintains some of the features already present in non-variable speech.
-
-However, it also has to be mentioned that the algorithm perform poorly in the V-NV condition, and does not seem to be capable to build an average from the variable samples to achieve high accuracy when it comes to non-variable samples. This highlights that this algorithm lacks some of the sophistication of the human speaker recognition system, as a human would most likely be able to perform much better, abstracting variable samples to non-variable ones.
-
 ```{r}
 #Descriptives of all conditions
 descriptives <- group_by(source_long, condition) %>%
-  summarise(mean = mean(accuracy), sd = sd(accuracy))
+  summarise(mean = mean(accuracy), sd = sd(accuracy)) %>%
+  mutate(mean_percent = round(mean * 100, digits = 2), sd_percent = round(sd * 100, digits = 2))
 
-ggplot(source_long, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5)
+ggplot(source_long, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("red","gold","green","orange","turquoise","sky blue","purple","dark green")) + theme_apa() + labs(x = "Model Condition", y = "Identification Accuracy") + scale_y_continuous(breaks = seq(0, 1, .05), labels = scales::percent) 
 
 #Power Analysis
 pwr.t.test(d = 0.2, sig.level = .05, power = 0.8, type = "two.sample", alternative = "greater")
 pwr.t.test(d = 0.2, sig.level = .05, n = 500, type = "two.sample", alternative = "greater")
+0.05/5
 ```
-
-# Hypothesis 1: Variable speech recognition is generally lower than non-variable speech recognition.
-
-While the difference in this instance is not very large (around 5%), the t-test below shows that it is significantly statistically significant, which is in line with results from human research. 
-
 ```{r}
 #NV-NV and V-V
 
@@ -58,17 +42,18 @@ While the difference in this instance is not very large (around 5%), the t-test 
 H1_df <- filter(source_long, condition %in% c("NV-NV", "V-V"))
 
 #Boxplot of NV-V and V-V
-ggplot(H1_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("#FFC04F","#82C1FF"))
+ggplot(H1_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("red","gold")) + theme_apa() + labs(x = "Model Condition", y = "Identification Accuracy") + scale_y_continuous(breaks = seq(0, 1, .05), labels = scales::percent) 
+
+#Descriptives
+H1_desc <- filter(descriptives, condition %in% c("NV-NV","V-V")) %>%
+  mutate(mean_percent = round(mean * 100, digits = 2), sd_percent = round(sd * 100, digits = 2), difference = round(max(mean_percent)-min(mean_percent), digits = 2))
 
 #Perform independent t-test
 t.test(accuracy ~ condition, data = H1_df, alternative = "greater", paired = FALSE)
+
 #Calculate effect size
 esc_t(t = 12.743, grp1n = 500, grp2n = 500, es.type="g")
 ```
-# Hypothesis 2: A model trained on variable speech will perform singifcantly better when tested on variable speech than a model trained on non-variable speech.
-
-The difference in this instance is very large and obviously statistically significant. Since the algorithm essentially just works purely with the information provided to it, there should be no performance difference in case variable speech would just be non-variable speech with random noise added. While the difference might not be nearly as large in experiments with human participants, it still supports the notion that variable speech contains information that helps identifying a specific person and that within-person variability is unique to an individual. 
-
 ```{r}
 #NV-V and V-V
 
@@ -76,13 +61,74 @@ The difference in this instance is very large and obviously statistically signif
 H2_df <- filter(source_long, condition %in% c("NV-V", "V-V"))
 
 #Boxplot of NV-V and V-V
-ggplot(H2_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("#3F3FFF","#82C1FF"))
+ggplot(H2_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("gold","green")) + theme_apa() + labs(x = "Model Condition", y = "Identification Accuracy") + scale_y_continuous(breaks = seq(0, 1, .05), labels = scales::percent)
+
+#Descriptives
+H2_desc <- filter(descriptives, condition %in% c("NV-V","V-V")) %>%
+  mutate(mean_percent = round(mean * 100, digits = 2), sd_percent = round(sd * 100, digits = 2), difference = round(max(mean_percent)-min(mean_percent), digits = 2))
+
 #Perform paired t-test
-t.test(accuracy ~ condition, data = H2_df, alternative = "less", paired = FALSE)
+t.test(accuracy ~ condition, data = H2_df, alternative = "greater", paired = FALSE)
+
 #Calculate effect size
-esc_t(t = -123.13, grp1n = 500, grp2n = 500, es.type="g")
+esc_t(t = 123.13, grp1n = 500, grp2n = 500, es.type="g")
 ```
+```{r}
+#NV+V-NV vs NV+V-V
 
+#Create new df with only NV+V-NV and NV+V-V data
+E1_df <- filter(source_long, condition %in% c("NV+V-NV", "NV+V-V"))
 
+#Boxplot of NV+V-NV and NV+V-V
+ggplot(E1_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("purple","dark green")) + theme_apa() + labs(x = "Model Condition", y = "Identification Accuracy") + scale_y_continuous(breaks = seq(0, 1, .05), labels = scales::percent)
+
+#Descriptives
+E1_desc <- filter(descriptives, condition %in% c("NV+V-NV","NV+V-V")) %>%
+  mutate(mean_percent = round(mean * 100, digits = 2), sd_percent = round(sd * 100, digits = 2), difference = round(max(mean_percent)-min(mean_percent), digits = 2))
+
+#Perform paired t-test
+t.test(accuracy ~ condition, data = E1_df, paired = FALSE)
+
+#Calculate effect size
+esc_t(t = 17.141, grp1n = 500, grp2n = 500, es.type="g")
+```
+```{r}
+#V-NV+V vs NV-NV+V
+
+#Create new df with only NV-NV+V and V-NV+V data
+E2_df <- filter(source_long, condition %in% c("NV-NV+V", "V-NV+V"))
+
+#Boxplot of NV-NV+V and V-NV+V
+ggplot(E2_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("turquoise","sky blue")) + theme_apa() + labs(x = "Model Condition", y = "Identification Accuracy") + scale_y_continuous(breaks = seq(0, 1, .05), labels = scales::percent)
+
+#Descriptives
+E2_desc <- filter(descriptives, condition %in% c("NV-NV+V","V-NV+V")) %>%
+  mutate(mean_percent = round(mean * 100, digits = 2), sd_percent = round(sd * 100, digits = 2), difference = round(max(mean_percent)-min(mean_percent), digits = 2))
+
+#Perform paired t-test
+t.test(accuracy ~ condition, data = E2_df, paired = FALSE)
+
+#Calculate effect size
+esc_t(t = -13.84, grp1n = 500, grp2n = 500, es.type="g")
+```
+```{r}
+#V-NV vs NV-NV
+
+#Create new df with only V-NV and NV-NV data
+E3_df <- filter(source_long, condition %in% c("V-NV", "NV-NV"))
+
+#Boxplot of V-NV and NV-NV
+ggplot(E3_df, aes(x = condition, y = accuracy, fill = condition)) + geom_boxplot(width=0.6) + geom_violin(trim=FALSE, width=0.8, alpha=0.5) + scale_fill_manual(values=c("red","orange")) + theme_apa() + labs(x = "Model Condition", y = "Identification Accuracy") + scale_y_continuous(breaks = seq(0, 1, .05), labels = scales::percent)
+
+#Descriptives
+E3_desc <- filter(descriptives, condition %in% c("V-NV","NV-NV")) %>%
+  mutate(mean_percent = round(mean * 100, digits = 2), sd_percent = round(sd * 100, digits = 2), difference = round(max(mean_percent)-min(mean_percent), digits = 2))
+
+#Perform paired t-test
+t.test(accuracy ~ condition, data = E3_df, paired = FALSE)
+
+#Calculate effect size
+esc_t(t = 117.04, grp1n = 500, grp2n = 500, es.type="g")
+```
 
 
